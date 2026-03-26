@@ -1,5 +1,8 @@
 name: Build Release Packages
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:
   push:
@@ -33,7 +36,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Linux dependencies
         if: matrix.target_name == 'Linux'
@@ -70,9 +73,10 @@ jobs:
 
       - name: Install macOS dependencies
         if: matrix.target_name == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
         run: |
-          brew update
-          brew install pkg-config sdl2 sdl2_image sdl2_ttf sdl2_mixer
+          brew install pkgconf sdl2 sdl2_image sdl2_ttf sdl2_mixer
 
       - name: Package Linux release
         if: matrix.target_name == 'Linux'
@@ -96,7 +100,7 @@ jobs:
           "${{ matrix.package_script }}"
 
       - name: Upload packaged archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact_name }}
           path: |
@@ -113,7 +117,7 @@ jobs:
 
     steps:
       - name: Download packaged archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release-artifacts
 

@@ -38,6 +38,12 @@ list_dependency_refs() {
     otool -L "$file" | tail -n +2 | awk '{print $1}'
 }
 
+list_dylib_id() {
+    local file="$1"
+
+    otool -D "$file" 2>/dev/null | tail -n +2 | head -n 1 || true
+}
+
 resolve_dependency_path() {
     local dependency_ref="$1"
     local file_dir="$2"
@@ -88,10 +94,16 @@ rewrite_dependencies() {
     local dependency_name
     local copied_dependency
     local replacement_ref
+    local self_id
 
     file_dir="$(dirname "$file")"
+    self_id="$(list_dylib_id "$file")"
 
     while IFS= read -r dependency_ref; do
+        if [[ -n "$self_id" && "$dependency_ref" == "$self_id" ]]; then
+            continue
+        fi
+
         resolved_dependency="$(resolve_dependency_path "$dependency_ref" "$file_dir")" || continue
         dependency_name="$(basename "$resolved_dependency")"
         copied_dependency="$LIB_DIR/$dependency_name"
@@ -150,6 +162,11 @@ cp -R "$ROOT_DIR/res" "$APP_DIR/"
 cp "$ROOT_DIR/README.md" "$ROOT_DIR/LICENSE" "$APP_DIR/"
 
 rewrite_dependencies "$APP_BINARY"
+
+if command -v codesign >/dev/null 2>&1; then
+    find "$LIB_DIR" -type f -name '*.dylib' -exec codesign --force --sign - {} \;
+    codesign --force --sign - "$APP_BINARY"
+fi
 
 cat > "$APP_DIR/run.command" <<'EOF'
 #!/usr/bin/env bash
