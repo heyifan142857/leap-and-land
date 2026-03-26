@@ -2,7 +2,7 @@
 
 A small 2D jumping game written in C with SDL2.
 
-This repository started as my freshman-year C course final project, inspired by the simple timing-based gameplay of WeChat's "Jump Jump". Two years later, I came back to clean it up, fix memory leaks, and make the project easier to build.
+This repository started as my freshman-year C course final project, inspired by the simple timing-based gameplay of WeChat's "Jump Jump". Two years later, I came back to clean it up, fix memory leaks, and make the project easier to build, package, and share.
 
 ## Overview
 
@@ -25,6 +25,7 @@ Main technologies:
 - Sound effects and background music
 - Resource cleanup improvements and memory leak fixes
 - Cached image and text rendering for better repeated draw performance
+- Portable release packaging with bundled SDL runtime libraries
 
 ## Controls
 
@@ -51,17 +52,19 @@ Main technologies:
 
 ```text
 .
+├── .github/    # GitHub Actions workflows
 ├── docs/       # Maintenance notes and update logs
 ├── include/    # Headers
-├── src/        # Source files
 ├── res/        # Images, audio, and fonts
+├── scripts/    # Packaging helpers
+├── src/        # Source files
 ├── LICENSE
 └── README.md
 ```
 
 ## Requirements
 
-To build the project, you need:
+To build the project from source, you need:
 
 - A C compiler with C11 support
 - CMake 3.16 or newer
@@ -71,6 +74,35 @@ To build the project, you need:
   - SDL2_image
   - SDL2_ttf
   - SDL2_mixer
+
+Prebuilt release packages do not require a local SDL installation because the runtime libraries are bundled inside the package.
+
+## Prebuilt Release Packages
+
+This repository now supports self-contained release packages for Linux, Windows, and macOS.
+
+- Linux packages are created locally with `scripts/package_linux_release.sh`.
+- Linux, Windows, and macOS packages can be built automatically on GitHub Actions with `.github/workflows/release-packages.yml`.
+- Tagged pushes such as `v1.0.0` publish the packaged archives to a GitHub Release.
+- Manual workflow runs upload the packaged archives as GitHub Actions artifacts.
+
+### Download And Use A Release Package
+
+1. Download the archive for your platform from the latest GitHub Release or from the workflow artifacts.
+2. Extract the archive.
+3. Launch the packaged game from inside the extracted folder so that the bundled `res/` directory is found correctly.
+
+Platform-specific launchers:
+
+- Linux: `./run.sh`
+- Windows: `run.bat` or `Leap_And_Land.exe`
+- macOS: `./run.command`
+
+On macOS, the package is not code-signed. If Gatekeeper blocks the first launch, use Right Click -> Open or remove the quarantine attribute manually.
+
+```bash
+xattr -dr com.apple.quarantine leap-and-land-macos-*/
+```
 
 ## Build And Run
 
@@ -118,6 +150,26 @@ Run it from the repository root:
 ./leap_and_land
 ```
 
+## Build A Local Linux Release Package
+
+If you want a Linux package that already bundles the SDL runtime libraries:
+
+```bash
+chmod +x scripts/package_linux_release.sh
+scripts/package_linux_release.sh
+```
+
+This generates:
+
+- `dist/leap-and-land-linux-<arch>/`
+- `dist/leap-and-land-linux-<arch>.tar.gz`
+
+Run the packaged build with:
+
+```bash
+./dist/leap-and-land-linux-<arch>/run.sh
+```
+
 ## Cross-Platform Setup Notes
 
 ### Linux
@@ -150,11 +202,20 @@ cmake --build build
 
 Then run the executable from the repository root so the `res/` directory can be found.
 
+## GitHub Actions Release Flow
+
+If you want the repository to build portable packages on GitHub:
+
+1. Push the repository to GitHub.
+2. Open the `Actions` tab.
+3. Run `Build Release Packages` manually for a test build, or push a tag such as `v1.0.0`.
+4. Download the generated artifacts, or use the created GitHub Release when the workflow is triggered by a tag.
+
 ## Development Notes
 
 - Assets are stored under `res/`.
 - The project currently uses relative resource paths in code.
-- Recent maintenance work also added cached UI rendering and improved resource cleanup.
+- Recent maintenance work also added cached UI rendering, improved resource cleanup, and portable packaging scripts.
 
 ## Update Log
 
