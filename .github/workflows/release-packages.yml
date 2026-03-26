@@ -116,6 +116,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
       - name: Download packaged archives
         uses: actions/download-artifact@v8
         with:
