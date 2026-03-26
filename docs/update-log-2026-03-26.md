@@ -2,7 +2,7 @@
 
 ## Summary
 
-This update focused on stability, cleanup, performance improvements in repeated UI rendering, and repository presentation for GitHub.
+This update focused on stability, cleanup, performance improvements in repeated UI rendering, repository presentation for GitHub, and portable release packaging.
 
 ## Changes
 
@@ -22,14 +22,19 @@ This update focused on stability, cleanup, performance improvements in repeated 
 - Marked assisted-mode runs as ineligible for best-score submission and kept the English fail-screen notice
 - Updated `CMakeLists.txt` to use `pkg-config`-based SDL dependency discovery
 - Rewrote `README.md` in English for a cleaner GitHub-ready presentation
+- Added Linux release packaging that bundles SDL runtime libraries into a portable archive
+- Added Windows and macOS packaging scripts for use in CI release builds
+- Added a GitHub Actions workflow to build Linux, Windows, and macOS release archives and publish tag builds as GitHub Releases
 
 ## Notes
 
 - The project still uses relative paths such as `./res/...`, so the executable should be launched from the repository root unless the resource directory layout is preserved.
 - The new display cache uses bounded in-memory caches and evicts older entries when limits are reached.
 - Local score data is stored in `./best_score.txt`, while legacy `leaderboard.txt` is also ignored by Git if it exists locally.
+- Windows and macOS release packages are intended to be produced in GitHub Actions because those targets are not cross-compiled from the local Linux development environment.
 
 ## Verification
 
 - Verified with local `gcc` compilation using SDL2, SDL2_image, SDL2_ttf, and SDL2_mixer
 - Verified that the game starts in a dummy SDL environment without immediate startup failures
+- Verified that the local Linux release package starts from the bundled distribution directory in a dummy SDL environment

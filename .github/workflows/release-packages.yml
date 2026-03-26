@@ -1,0 +1,136 @@
+name: Build Release Packages
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target_name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target_name: Linux
+            artifact_name: linux-release
+            runner: ubuntu-latest
+            package_script: scripts/package_linux_release.sh
+          - target_name: Windows
+            artifact_name: windows-release
+            runner: windows-latest
+            package_script: scripts/package_windows_release.sh
+            use_msys2: true
+          - target_name: macOS
+            artifact_name: macos-release
+            runner: macos-latest
+            package_script: scripts/package_macos_release.sh
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install Linux dependencies
+        if: matrix.target_name == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            patchelf \
+            pkg-config \
+            zip \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-mixer-dev \
+            libsdl2-ttf-dev
+
+      - name: Set up MSYS2
+        if: matrix.use_msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_image
+            mingw-w64-x86_64-SDL2_mixer
+            mingw-w64-x86_64-SDL2_ttf
+            zip
+
+      - name: Install macOS dependencies
+        if: matrix.target_name == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+        run: |
+          brew install pkgconf sdl2 sdl2_image sdl2_ttf sdl2_mixer
+
+      - name: Package Linux release
+        if: matrix.target_name == 'Linux'
+        run: |
+          chmod +x "${{ matrix.package_script }}"
+          "${{ matrix.package_script }}"
+
+      - name: Package Windows release
+        if: matrix.target_name == 'Windows'
+        shell: msys2 {0}
+        env:
+          CMAKE_GENERATOR: Ninja
+        run: |
+          chmod +x "${{ matrix.package_script }}"
+          "${{ matrix.package_script }}"
+
+      - name: Package macOS release
+        if: matrix.target_name == 'macOS'
+        run: |
+          chmod +x "${{ matrix.package_script }}"
+          "${{ matrix.package_script }}"
+
+      - name: Upload packaged archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  publish_release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Download packaged archives
+        uses: actions/download-artifact@v8
+        with:
+          path: release-artifacts
+
+      - name: Upload archives to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" --title "$TAG_NAME" --generate-notes
+
+          while IFS= read -r -d '' archive_path; do
+            gh release upload "$TAG_NAME" "$archive_path" --clobber
+          done < <(find release-artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' \) -print0)

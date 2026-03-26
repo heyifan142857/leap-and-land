@@ -6,6 +6,7 @@
 # CMake and build outputs
 cmake-build-debug/
 build/
+dist/
 out/
 CMakeCache.txt
 CMakeFiles/
