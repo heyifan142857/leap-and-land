@@ -36,22 +36,5 @@ typedef struct list{
 }LinkedList;
 
 void do_game_logic();
-static void do_game_input();
-static void do_auto();
-static void do_score();
-static void do_Moist();
-static void draw_game();
-static void do_fps();
-static double speed_calculator_h(Uint32 time);
-static int speed_calculator_y(int type,int size);
-static void init_blocks();
-static void quit_blocks();
-void draw_blocks(LinkedList list);
-static char *generateRandomNumber();
-static double difficulty_random_len(int diff);
-static double difficulty_random_size(int diff);
-extern bool fail;
-
-
 
 #endif //LEAP_AND_LAND_GAME_H

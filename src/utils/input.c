@@ -3,6 +3,12 @@
 //
 #include "utils/input.h"
 
+static void do_quit(SDL_QuitEvent quit);
+static void do_keydown(SDL_KeyboardEvent key);
+static void do_keyup(SDL_KeyboardEvent key);
+static void do_mousebuttondown(SDL_MouseButtonEvent key);
+static void do_mousebuttonup(SDL_MouseButtonEvent key);
+
 void do_event(SDL_Event event){
     switch (event.type) {
         case SDL_QUIT:
@@ -28,6 +34,7 @@ void do_event(SDL_Event event){
 }
 
 static void do_quit(SDL_QuitEvent quit){
+    (void)quit;
     app.keyboard[SDL_SCANCODE_ESCAPE] = true;
 }
 

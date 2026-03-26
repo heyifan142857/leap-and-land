@@ -3,15 +3,9 @@
 //
 #include <utils/audio.h>
 
-void init_Audio() {
+void init_Audio(void) {
     if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 2048) < 0) {
-        printf("SDL_mixer Error: %s\n", Mix_GetError());
-        return;
+        fprintf(stderr, "Mix_OpenAudio failed: %s\n", Mix_GetError());
+        exit(EXIT_FAILURE);
     }
 }
-
-void do_music(const char* filePath, int loop,Mix_Music *bgm){
-    bgm = Mix_LoadMUS(filePath);
-    Mix_PlayMusic(bgm,loop);
-}
-

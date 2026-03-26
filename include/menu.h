@@ -20,21 +20,6 @@ typedef struct {
     void (*action)();
 } Widget;
 
-
-
-
-
 void do_menu_logic();
-static void do_menu_input(SDL_Event event);
-static void draw_menu();
-static void init_widgets();
-static void quit_widgets();
-static void do_widgets();
-static void pre_widget();
-static void next_widget();
-static void act_widget();
-static void action_start();
-static void action_help();
-static void action_quit();
 
 #endif //LEAP_AND_LAND_MENU_H

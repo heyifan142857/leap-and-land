@@ -12,7 +12,4 @@
 
 void do_help_logic();
 
-static void do_help_input();
-static void draw_help();
-
 #endif //LEAP_AND_LAND_HELP_H
