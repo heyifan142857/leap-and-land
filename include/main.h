@@ -12,8 +12,4 @@
 #include <utils/display.h>
 #include <utils/audio.h>
 
-static void init_app();
-static void quit_app();
-static void init_keyboard();
-
 #endif //LEAP_AND_LAND_MAIN_H

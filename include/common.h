@@ -9,7 +9,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
-#include <msplog.h>
 #include <time.h>
 
 #include <SDL2/SDL.h>
@@ -27,8 +26,6 @@ typedef struct {
 } App;
 
 extern int next;
-
-extern int scores;
 
 extern App app;
 

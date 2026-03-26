@@ -1,0 +1,46 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# CMake and build outputs
+cmake-build-debug/
+build/
+out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+
+# Binaries and libraries
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+*.a
+*.o
+*.obj
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~ 
+leaderboard.txt
+best_score.txt
+
+# Test and coverage artifacts
+Testing/
+coverage/
+*.gcda
+*.gcno
+*.gcov
+
+# OS files
+.DS_Store
+Thumbs.db

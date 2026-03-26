@@ -7,10 +7,6 @@
 
 #include <common.h>
 
-void init_Audio();
-void do_music(const char* filePath, int loop,Mix_Music *bgm);
-//void do_chunk();
-
-
+void init_Audio(void);
 
 #endif //LEAP_AND_LAND_AUDIO_H
