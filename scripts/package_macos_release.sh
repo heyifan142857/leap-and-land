@@ -23,11 +23,13 @@ add_search_dir() {
         return
     fi
 
-    for existing_dir in "${MACOS_LIB_SEARCH_DIRS[@]}"; do
-        if [[ "$existing_dir" == "$dir" ]]; then
-            return
-        fi
-    done
+    if [[ ${#MACOS_LIB_SEARCH_DIRS[@]} -gt 0 ]]; then
+        for existing_dir in "${MACOS_LIB_SEARCH_DIRS[@]}"; do
+            if [[ "$existing_dir" == "$dir" ]]; then
+                return
+            fi
+        done
+    fi
 
     MACOS_LIB_SEARCH_DIRS+=("$dir")
 }
