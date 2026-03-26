@@ -1,7 +1,12 @@
 //
 // Created by user on 2024/1/17.
 //
+#include <errno.h>
+#include <string.h>
+
 #include <game.h>
+
+#define BEST_SCORE_FILE_PATH "./best_score.txt"
 
 static void do_game_input(void);
 static void draw_game(void);
@@ -17,6 +22,9 @@ static double difficulty_random_size(int diff);
 static void do_auto(void);
 static void do_score(void);
 static void do_Moist(void);
+static void start_gathering_audio(void);
+static void update_gathering_audio(void);
+static void stop_gathering_audio(void);
 static SDL_Texture *create_scaled_texture(const char *file_path, int size);
 static Blocks *create_block_node(int size, int len, const char *texture_path, int block_shape);
 static Blocks *create_initial_block(void);
@@ -28,6 +36,10 @@ static bool advance_blocks(int steps);
 static void finish_landing(void);
 static bool load_chunks(void);
 static void free_chunks(void);
+static void trigger_fail(void);
+static void load_best_score(void);
+static void save_best_score(void);
+static void submit_score_if_eligible(void);
 
 static Uint32 tick;
 static Uint32 start_time;
@@ -43,6 +55,8 @@ static int difficulty;
 static bool fail;
 static bool restart;
 static bool automatic;
+static bool assisted_mode_used;
+static bool broke_best_score;
 static bool RKeyPressed = false;
 static Kun kun;
 static bool gathering = false;
@@ -55,6 +69,8 @@ static Mix_Chunk *chunk_tnt;
 static double percentage = 0.0;
 static int channel_1 = -1;
 static int channel_2 = -1;
+static int best_score = -1;
+static bool best_score_loaded;
 
 static const char *const block_paths[] = {
     "./res/img/blocks_game/005.png",
@@ -93,6 +109,8 @@ void do_game_logic(void){
     fail = false;
     restart = false;
     automatic = false;
+    assisted_mode_used = false;
+    broke_best_score = false;
     RKeyPressed = false;
     gathering = false;
     jumping = false;
@@ -140,6 +158,9 @@ static void do_game_input(void){
         if (!RKeyPressed) {
             RKeyPressed = true;
             automatic = !automatic;
+            if (automatic) {
+                assisted_mode_used = true;
+            }
         }
     } else {
         RKeyPressed = false;
@@ -152,13 +173,9 @@ static void do_game_input(void){
                 if(fail){
                     restart = true;
                 }else if(!gathering){
-                    tick = SDL_GetTicks();
-                    gathering = true;
-                    channel_1 = Mix_PlayChannel(-1,chunk_1,0);
+                    start_gathering_audio();
                 }else{
-                    if((SDL_GetTicks() - tick) > LEN_CHUNK && (channel_2 < 0 || !Mix_Playing(channel_2))){
-                        channel_2 = Mix_PlayChannel(-1,chunk_2,-1);
-                    }
+                    update_gathering_audio();
                     if(percentage < 1.0){
                         percentage = (SDL_GetTicks() - tick) / LEN_CHUNK;
                     }else{
@@ -173,17 +190,10 @@ static void do_game_input(void){
                 reminder = SDL_GetTicks();
                 duration = SDL_GetTicks() - tick;
                 tick = SDL_GetTicks();
-                if (channel_1 >= 0) {
-                    Mix_FadeOutChannel(channel_1, 700);
-                }
-                if (channel_2 >= 0) {
-                    Mix_FadeOutChannel(channel_2, 10);
-                }
+                stop_gathering_audio();
                 printf("Press the space bar for %u\n",duration);
 
                 gathering = false;
-                channel_1 = -1;
-                channel_2 = -1;
                 kun.dh = speed_calculator_h(duration);
                 jumping = true;
                 percentage = 0.0;
@@ -192,7 +202,7 @@ static void do_game_input(void){
             }
 
             if(blocks_list.middle != NULL && blocks_list.middle->shape == 2 && (SDL_GetTicks() - tnt_time) > 3384){
-                fail = true;
+                trigger_fail();
             }
         }else if(!fail){
             do_auto();
@@ -242,11 +252,7 @@ static void do_game_input(void){
                 app.keyboard[SDL_SCANCODE_ESCAPE] = true;
             }
         }else{
-            printf("YOU LOSE\n");
-            if(!fail){
-                fail = true;
-                Mix_PlayChannel(-1,chunk_fail,0);
-            }
+            trigger_fail();
             if(kun.h <= -400){
                 kun.h = -400;
                 jumping = false;
@@ -276,12 +282,41 @@ static void draw_game(void){
         }
     }else{
         char scores_text[32];
+        char best_text[64];
 
         display_font("./res/font/Gugi-Regular.ttf","KUNKUN DIED!",72,0,0,0,120,100);
 
         snprintf(scores_text, sizeof(scores_text), "The scores is %d", scores);
-        display_font("./res/font/Gugi-Regular.ttf",scores_text,54,0,0,0,120,220);
-        display_font("./res/font/Gugi-Regular.ttf","press SPACE to try again",36,0,0,0,130,320);
+        display_font("./res/font/Gugi-Regular.ttf",scores_text,42,0,0,0,120,200);
+        if (assisted_mode_used) {
+            display_font(
+                "./res/font/Peralta-Regular.ttf",
+                "Score not counted because assisted mode was used.",
+                24,
+                140,
+                20,
+                20,
+                120,
+                260
+            );
+        } else if (broke_best_score) {
+            display_font(
+                "./res/font/Peralta-Regular.ttf",
+                "You set a new best score!",
+                28,
+                0,
+                120,
+                0,
+                120,
+                260
+            );
+        } else if (best_score >= 0) {
+            snprintf(best_text, sizeof(best_text), "Best score: %d", best_score);
+            display_font("./res/font/Peralta-Regular.ttf", best_text, 28, 40, 40, 40, 120, 260);
+        } else {
+            display_font("./res/font/Peralta-Regular.ttf", "No best score yet", 28, 40, 40, 40, 120, 260);
+        }
+        display_font("./res/font/Gugi-Regular.ttf","press SPACE to try again",30,0,0,0,130,510);
     }
 
     if(gathering){
@@ -482,13 +517,9 @@ static void do_auto(void){
     double gathering_time = speed_jump * speed_jump / 100.0;
 
     if(!gathering){
-        tick = SDL_GetTicks();
-        gathering = true;
-        channel_1 = Mix_PlayChannel(-1,chunk_1,0);
+        start_gathering_audio();
     }else{
-        if((SDL_GetTicks() - tick) > LEN_CHUNK && (channel_2 < 0 || !Mix_Playing(channel_2))){
-            channel_2 = Mix_PlayChannel(-1,chunk_2,-1);
-        }
+        update_gathering_audio();
         if(percentage < 1.0){
             percentage = (SDL_GetTicks() - tick) / LEN_CHUNK;
         }else{
@@ -500,17 +531,10 @@ static void do_auto(void){
         Uint32 duration = SDL_GetTicks() - tick;
 
         tick = SDL_GetTicks();
-        if (channel_1 >= 0) {
-            Mix_FadeOutChannel(channel_1, 700);
-        }
-        if (channel_2 >= 0) {
-            Mix_FadeOutChannel(channel_2, 10);
-        }
+        stop_gathering_audio();
         printf("Press the space bar for %u\n",duration);
 
         gathering = false;
-        channel_1 = -1;
-        channel_2 = -1;
         kun.dh = speed_calculator_h(duration);
         jumping = true;
         percentage = 0.0;
@@ -519,7 +543,7 @@ static void do_auto(void){
     }
 
     if(blocks_list.middle->shape == 2 && (SDL_GetTicks() - tnt_time) > 3384){
-        fail = true;
+        trigger_fail();
     }
 }
 
@@ -542,6 +566,40 @@ static void do_Moist(void){
 
     SDL_DestroyTexture(blocks_list.middle->texture);
     blocks_list.middle->texture = new_texture;
+}
+
+static void start_gathering_audio(void){
+    tick = SDL_GetTicks();
+    gathering = true;
+    channel_1 = Mix_PlayChannel(-1, chunk_1, 0);
+    channel_2 = -1;
+}
+
+static void update_gathering_audio(void){
+    bool first_chunk_finished;
+
+    if (channel_1 >= 0) {
+        first_chunk_finished = !Mix_Playing(channel_1);
+    } else {
+        // Fall back to the measured chunk length if SDL_mixer did not hand out a channel.
+        first_chunk_finished = (SDL_GetTicks() - tick) >= LEN_CHUNK;
+    }
+
+    if (first_chunk_finished && (channel_2 < 0 || !Mix_Playing(channel_2))) {
+        channel_2 = Mix_PlayChannel(-1, chunk_2, -1);
+    }
+}
+
+static void stop_gathering_audio(void){
+    if (channel_1 >= 0) {
+        Mix_FadeOutChannel(channel_1, 700);
+    }
+    if (channel_2 >= 0) {
+        Mix_FadeOutChannel(channel_2, 10);
+    }
+
+    channel_1 = -1;
+    channel_2 = -1;
 }
 
 static SDL_Texture *create_scaled_texture(const char *file_path, int size){
@@ -748,5 +806,70 @@ static void free_chunks(void){
     if (chunk_tnt != NULL) {
         Mix_FreeChunk(chunk_tnt);
         chunk_tnt = NULL;
+    }
+}
+
+static void trigger_fail(void){
+    if (fail) {
+        return;
+    }
+
+    printf("YOU LOSE\n");
+    fail = true;
+    submit_score_if_eligible();
+    Mix_PlayChannel(-1, chunk_fail, 0);
+}
+
+static void load_best_score(void){
+    FILE *file;
+
+    if (best_score_loaded) {
+        return;
+    }
+
+    best_score_loaded = true;
+    best_score = -1;
+    file = fopen(BEST_SCORE_FILE_PATH, "r");
+    if (file == NULL) {
+        if (errno != ENOENT) {
+            fprintf(stderr, "Failed to open %s: %s\n", BEST_SCORE_FILE_PATH, strerror(errno));
+        }
+        return;
+    }
+
+    if (fscanf(file, "%d", &best_score) != 1) {
+        best_score = -1;
+    }
+
+    fclose(file);
+}
+
+static void save_best_score(void){
+    FILE *file = fopen(BEST_SCORE_FILE_PATH, "w");
+
+    if (file == NULL) {
+        fprintf(stderr, "Failed to write %s: %s\n", BEST_SCORE_FILE_PATH, strerror(errno));
+        return;
+    }
+
+    if (best_score >= 0) {
+        fprintf(file, "%d\n", best_score);
+    }
+
+    fclose(file);
+}
+
+static void submit_score_if_eligible(void){
+    load_best_score();
+    broke_best_score = false;
+
+    if (assisted_mode_used || scores <= 0) {
+        return;
+    }
+
+    if (best_score < 0 || scores > best_score) {
+        best_score = scores;
+        broke_best_score = true;
+        save_best_score();
     }
 }

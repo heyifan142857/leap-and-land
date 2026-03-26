@@ -30,7 +30,9 @@ Makefile
 *.temp
 *.swp
 *.swo
-*~
+*~ 
+leaderboard.txt
+best_score.txt
 
 # Test and coverage artifacts
 Testing/
