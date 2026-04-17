@@ -202,15 +202,6 @@ cmake --build build
 
 Then run the executable from the repository root so the `res/` directory can be found.
 
-## GitHub Actions Release Flow
-
-If you want the repository to build portable packages on GitHub:
-
-1. Push the repository to GitHub.
-2. Open the `Actions` tab.
-3. Run `Build Release Packages` manually for a test build, or push a tag such as `v1.0.0`.
-4. Download the generated artifacts, or use the created GitHub Release when the workflow is triggered by a tag.
-
 ## Development Notes
 
 - Assets are stored under `res/`.
